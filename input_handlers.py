@@ -1,13 +1,16 @@
 from bearlibterminal import terminal as blt
 from game_states import GameStates
+# import pdb
 
 
 def handle_keys(game_state):
-
+    # pdb.set_trace()
     if game_state == GameStates.PLAYERS_TURN:
         return handle_player_turn_keys()
     elif game_state == GameStates.PLAYER_DEAD:
         return handle_player_dead_keys()
+    elif game_state == GameStates.TARGETING:
+        return handle_targeting_keys()
     elif game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
         return handle_inventory_keys()
 
@@ -49,6 +52,23 @@ def handle_player_turn_keys():
 
     elif code == blt.TK_ESCAPE:
         return {'exit': True}
+
+    return {}
+
+
+def handle_targeting_keys():
+    code = blt.read()
+    if code == blt.TK_ESCAPE:
+        return {'exit': True}
+
+    if code == blt.TK_MOUSE_LEFT:
+        x = blt.state(blt.TK_MOUSE_X)
+        y = blt.state(blt.TK_MOUSE_Y)
+        return {'left_click': (x, y)}
+    elif code == blt.TK_MOUSE_RIGHT:
+        x = blt.state(blt.TK_MOUSE_X)
+        y = blt.state(blt.TK_MOUSE_Y)
+        return {'right_click': (x, y)}
 
     return {}
 

@@ -14,16 +14,13 @@ class RenderOrder(Enum):
 def get_names_under_mouse(mouse, entities, fov_map, camera):
     x = mouse[0] - 1
     y = mouse[1] - 1
-    # print('x,y ' + str(x) + ' ' + str(y))
-    # print([entities[0].name,
-    #       camera.to_camera_coordinates(entities[0].x, entities[0].y)])
 
     names = [entity.name for entity in entities
              if camera.to_camera_coordinates(entity.x, entity.y) == (x, y) and
              tcod.map_is_in_fov(fov_map, entity.x, entity.y)]
-    # print(names)
+
     names = ', '.join(names)
-    # print(type(names))
+
     return names.capitalize()
 
 
@@ -112,7 +109,7 @@ def render_all(entities, player, game_map, camera,
                sidebar_x, sidebar_width,
                panel_y, panel_height,
                screen_width, screen_height,
-               mouse, game_state):
+               game_state, mouse):
     camera.move_camera(player.x, player.y, game_map)
     if fov_recompute:
         create_window(0, 0, camera.width + 2, camera.height + 1)
@@ -121,7 +118,6 @@ def render_all(entities, player, game_map, camera,
         create_window(sidebar_x, 0, sidebar_width, screen_height - 1,
                       'PLAYER STATS')
         names = get_names_under_mouse(mouse, entities, fov_map, camera)
-        # print(entities)
 
         for y in range(camera.height):
             for x in range(camera.width):
@@ -164,7 +160,7 @@ def render_all(entities, player, game_map, camera,
                'dark red', 'darkest red')
     y = 1
     for message in message_log.messages:
-        print(message.text)
+        # print(message.text)
         blt.color(message.color)
         blt.puts(message_log.x, panel_y + y, '[font=small]' + message.text)
         y += 1

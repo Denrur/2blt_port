@@ -8,33 +8,16 @@ from fov_functions import initialize_fov, recompute_fov
 from game_messages import Message, MessageLog
 from game_states import GameStates
 from input_handlers import handle_keys
+from loader_functions.initialize_new_game import get_constants
 from map_objects.game_map import GameMap
+
 from render_functions import render_all, RenderOrder
 # import pdb
 
 
 def main():
+    constants = get_constants()
 
-    screen_width = blt.state(blt.TK_WIDTH)
-    screen_height = blt.state(blt.TK_HEIGHT)
-    map_width = int(blt.get("ini.Game.map_width"))
-    map_height = int(blt.get("ini.Game.map_height"))
-
-    depth = int(blt.get("ini.Game.depth"))
-    min_size = int(blt.get("ini.Game.min_size"))
-    full_rooms = {'False': False,
-                  'True': True}[blt.get("ini.Game.full_rooms")]
-
-    fov_algorithm = int(blt.get("ini.Game.fov_algorithm"))
-    fov_light_walls = {'False': False,
-                       'True': True}[blt.get("ini.Game.fov_light_walls")]
-    fov_radius = int(blt.get("ini.Game.fov_radius"))
-
-    max_monsters_per_room = int(blt.get("ini.Game.max_monsters_per_room"))
-    max_items_per_room = 2
-
-    camera_width = int(blt.get("ini.Game.camera_width"))
-    camera_height = int(blt.get("ini.Game.camera_height"))
     (camera_x, camera_y) = (0, 0)
 
     fighter_component = Fighter(hp=30, defense=0, power=5)
@@ -44,26 +27,23 @@ def main():
                     fighter=fighter_component, inventory=inventory_component)
 
     entities = [player]
-    game_map = GameMap(map_width, map_height, full_rooms)
-    game_map.make_bsp(depth, min_size, player, entities,
-                      max_monsters_per_room, max_items_per_room)
+    game_map = GameMap(constants['map_width'], constants['map_height'],
+                       constants['full_rooms'])
+    game_map.make_bsp(constants['depth'], constants['min_size'],
+                      player, entities,
+                      constants['max_monsters_per_room'],
+                      constants['max_items_per_room'])
 
     fov_recompute = True
     fov_map = initialize_fov(game_map)
 
-    panel_height = screen_height - camera_height - 3
-    panel_y = camera_height + 2  # screen_height - panel_height + 1
+    message_log = MessageLog(constants['message_x'],
+                             constants['message_width'],
+                             constants['message_height'])
 
-    sidebar_width = screen_width - camera_width - 2
-    sidebar_x = camera_width + 2  # screen_width - sidebar_width + 1
-
-    message_x = 2
-    message_width = camera_width
-    message_height = panel_height - 2
-
-    message_log = MessageLog(message_x, message_width, message_height)
-
-    camera = Camera(camera_width, camera_height, camera_x, camera_y)
+    camera = Camera(constants['camera_width'],
+                    constants['camera_height'],
+                    camera_x, camera_y)
 
     blt.color("white")
     blt.composition(True)
@@ -71,21 +51,26 @@ def main():
     game_state = GameStates.PLAYERS_TURN
     previous_game_state = game_state
 
+    targeting_item = None
+
     while True:
+        # pdb.set_trace()
         mouse_x = blt.state(blt.TK_MOUSE_X)
         mouse_y = blt.state(blt.TK_MOUSE_Y)
         mouse = (mouse_x, mouse_y)
         if fov_recompute:
             recompute_fov(fov_map, player.x, player.y,
-                          fov_radius, fov_light_walls, fov_algorithm)
+                          constants['fov_radius'],
+                          constants['fov_light_walls'],
+                          constants['fov_algorithm'])
 
         render_all(entities, player, game_map, camera,
                    fov_map, fov_recompute,
                    message_log,
-                   sidebar_x, sidebar_width,
-                   panel_y, panel_height,
-                   screen_width, screen_height,
-                   mouse, game_state)
+                   constants['sidebar_x'], constants['sidebar_width'],
+                   constants['panel_y'], constants['panel_height'],
+                   constants['screen_width'], constants['screen_height'],
+                   game_state, mouse)
 
         fov_recompute = False
         blt.refresh()
@@ -98,6 +83,9 @@ def main():
         drop_inventory = action.get('drop_inventory')
         inventory_index = action.get('inventory_index')
         exit = action.get('exit')
+
+        left_click = action.get('left_click')
+        right_click = action.get('right_click')
 
         if blt.TK_MOUSE_X or blt.TK_MOUSE_Y:
             fov_recompute = True
@@ -151,9 +139,36 @@ def main():
                 inventory_index < len(player.inventory.items)):
             item = player.inventory.items[inventory_index]
             if game_state == GameStates.SHOW_INVENTORY:
-                player_turn_results.extend(player.inventory.use(item))
+                player_turn_results.extend(
+                    player.inventory.use(item,
+                                         entities=entities,
+                                         fov_map=fov_map))
             elif game_state == GameStates.DROP_INVENTORY:
                 player_turn_results.extend(player.inventory.drop_item(item))
+
+        if game_state == GameStates.TARGETING:
+            if left_click:
+                print(left_click)
+                (target_x, target_y) = camera.to_map_coordinates(left_click[0],
+                                                                 left_click[1])
+                print(target_x, target_y)
+                item_use_results = player.inventory.use(targeting_item,
+                                                        entities=entities,
+                                                        fov_map=fov_map,
+                                                        target_x=target_x,
+                                                        target_y=target_y)
+                player_turn_results.extend(item_use_results)
+            elif right_click:
+                player_turn_results.append({'targeting_cancelled': True})
+
+        if exit:
+            if game_state in (GameStates.SHOW_INVENTORY,
+                              GameStates.DROP_INVENTORY):
+                game_state = previous_game_state
+            elif game_state == GameStates.TARGETING:
+                player_turn_results.append({'targeting_cancelled': True})
+            else:
+                return False
 
         for player_turn_result in player_turn_results:
             message = player_turn_result.get('message')
@@ -161,6 +176,8 @@ def main():
             item_added = player_turn_result.get('item_added')
             item_consumed = player_turn_result.get('consumed')
             item_dropped = player_turn_result.get('item_dropped')
+            targeting = player_turn_result.get('targeting')
+            targeting_cancelled = player_turn_result.get('targeting_cancelled')
 
             if message:
                 message_log.add_message(message)
@@ -180,6 +197,19 @@ def main():
 
             if item_consumed:
                 game_state = GameStates.ENEMY_TURN
+
+            if targeting:
+                previous_game_state = GameStates.PLAYERS_TURN
+                game_state = GameStates.TARGETING
+
+                targeting_item = targeting
+
+                message_log.add_message(targeting_item.item.targeting_message)
+
+            if targeting_cancelled:
+                game_state = previous_game_state
+
+                message_log.add_message(Message('Targeting cancelled'))
 
             if item_dropped:
                 entities.append(item_dropped)
@@ -216,15 +246,6 @@ def main():
 
             else:
                 game_state = GameStates.PLAYERS_TURN
-
-        if exit:
-            # print('exit')
-            if game_state in (GameStates.SHOW_INVENTORY,
-                              GameStates.DROP_INVENTORY):
-                game_state = previous_game_state
-                # print(game_state)
-            else:
-                return False
 
 
 if __name__ == '__main__':

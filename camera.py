@@ -35,3 +35,9 @@ class Camera:
         # if (x < 0 or y < 0 or x >= self.width or y >= self.height):
         #    return(None, None)
         return (x, y)
+
+    def to_map_coordinates(self, x, y):
+        # Конвертируем координаты на экране в координаты на карте
+        (x, y) = (x + self.x - 1, y + self.y - 1)
+
+        return (x, y)
