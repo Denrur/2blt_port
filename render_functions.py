@@ -164,17 +164,23 @@ def render_all(entities, player, game_map, camera,
                'dark red', 'darkest red')
     y = 1
     for message in message_log.messages:
-        # print(message.text)
+        print(message.text)
+        blt.color(message.color)
         blt.puts(message_log.x, panel_y + y, '[font=small]' + message.text)
         y += 1
-
+    blt.color('white')
     if names:
         blt.clear_area(mouse[0] + 1, mouse[1], len(names), 1)
         blt.puts(mouse[0] + 1, mouse[1], names)
 
-    if game_state == GameStates.SHOW_INVENTORY:
-        inventory_menu('Press the key next to an item to use it or press ESC' +
-                       ' to cancel. \n',
+    if game_state in (GameStates.SHOW_INVENTORY,
+                      GameStates.DROP_INVENTORY):
+        if game_state == GameStates.SHOW_INVENTORY:
+            inventory_title = 'Press the key next to an item to use it'
+        else:
+            inventory_title = 'Press the key next to an item to drop it'
+
+        inventory_menu(inventory_title,
                        player.inventory,
                        50, screen_width, screen_height)
 

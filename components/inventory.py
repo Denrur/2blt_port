@@ -46,8 +46,20 @@ class Inventory:
                     self.remove_item(item_entity)
 
             results.extend(item_use_results)
-        print(results)
+        # print(results)
         return results
 
     def remove_item(self, item):
         self.items.remove(item)
+
+    def drop_item(self, item):
+        results = []
+
+        item.x = self.owner.x
+        item.y = self.owner.y
+
+        self.remove_item(item)
+        results.append({'item_dropped': item,
+                        'message': Message('You dropped the {0}'.format(
+                        item.name), 'yellow')})
+        return results

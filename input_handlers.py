@@ -3,14 +3,12 @@ from game_states import GameStates
 
 
 def handle_keys(game_state):
-    # print(game_state)
+
     if game_state == GameStates.PLAYERS_TURN:
-        # print('player turn')
         return handle_player_turn_keys()
     elif game_state == GameStates.PLAYER_DEAD:
         return handle_player_dead_keys()
-    elif game_state == GameStates.SHOW_INVENTORY:
-        # print('SHOW inv')
+    elif game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
         return handle_inventory_keys()
 
     return {}
@@ -42,6 +40,9 @@ def handle_player_turn_keys():
     elif code == blt.TK_I:
         # print('show_inventory')
         return{'show_inventory': True}
+
+    elif code == blt.TK_O:
+        return{'drop_inventory': True}
 
     if code == blt.TK_RETURN and blt.TK_ALT:
         return {'fullscreen': True}
